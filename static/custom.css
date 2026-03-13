@@ -1,0 +1,4 @@
+body { background: #fff; }
+.navbar { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.card { border: 1px solid #eee; }
+table th { white-space: nowrap; }

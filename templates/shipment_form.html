@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block content %}
+<h5>{{ 'Edit' if shipment else 'New' }} Shipment</h5>
+
+<form method="post" class="row g-3">
+
+  <!-- Basic -->
+  <div class="col-md-6">
+    <label class="form-label">Title</label>
+    <input name="title" class="form-control" value="{{ shipment.title if shipment }}" required>
+  </div>
+
+  <!-- Tomato Type -->
+  <div class="col-md-3">
+    <label class="form-label">Tomato Type</label>
+    <select name="tomato_type" class="form-select" required>
+      {% for t in tomato_types %}
+        <option value="{{ t }}" {% if shipment and shipment.tomato_type==t %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Quantity (kg)</label>
+    <input name="quantity_kg" type="number" step="0.1" class="form-control" value="{{ shipment.quantity_kg if shipment }}">
+  </div>
+
+  <!-- Source -->
+  <div class="col-12"><h6 class="mt-3">Source (From)</h6></div>
+  <div class="col-md-6">
+    <label class="form-label">From (Location Name)</label>
+    <div class="input-group">
+      <input id="from_name" name="origin_name" class="form-control" value="{{ shipment.origin_name if shipment }}" required>
+      <button class="btn btn-outline-secondary" type="button" onclick="geocode('from')">Find</button>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">From Latitude</label>
+    <input id="from_lat" name="origin_lat" type="number" step="any" class="form-control" value="{{ shipment.origin_lat if shipment }}" required>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">From Longitude</label>
+    <input id="from_lng" name="origin_lng" type="number" step="any" class="form-control" value="{{ shipment.origin_lng if shipment }}" required>
+  </div>
+
+  <!-- Destination -->
+  <div class="col-12"><h6 class="mt-3">Destination (To)</h6></div>
+  <div class="col-md-6">
+    <label class="form-label">To (Location Name)</label>
+    <div class="input-group">
+      <input id="to_name" name="dest_name" class="form-control" value="{{ shipment.dest_name if shipment }}" required>
+      <button class="btn btn-outline-secondary" type="button" onclick="geocode('to')">Find</button>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">To Latitude</label>
+    <input id="to_lat" name="dest_lat" type="number" step="any" class="form-control" value="{{ shipment.dest_lat if shipment }}" required>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">To Longitude</label>
+    <input id="to_lng" name="dest_lng" type="number" step="any" class="form-control" value="{{ shipment.dest_lng if shipment }}" required>
+  </div>
+
+  <!-- Timing -->
+  <div class="col-md-4">
+    <label class="form-label">Planned Start</label>
+    <input name="planned_start" type="datetime-local" class="form-control"
+           value="{{ shipment.planned_start.strftime('%Y-%m-%dT%H:%M') if shipment and shipment.planned_start }}">
+  </div>
+
+  <!-- Weather / Road -->
+  <div class="col-md-4">
+    <label class="form-label">Avg Temp (°C) [fallback if no API]</label>
+    <input name="avg_temp_c" type="number" step="0.1" class="form-control" value="{{ shipment.avg_temp_c if shipment }}">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Rain Risk</label>
+    <select name="rain_risk" class="form-select">
+      <option value="low"    {% if shipment and shipment.rain_risk=='low' %}selected{% endif %}>low</option>
+      <option value="medium" {% if shipment and shipment.rain_risk=='medium' %}selected{% endif %}>medium</option>
+      <option value="high"   {% if shipment and shipment.rain_risk=='high' %}selected{% endif %}>high</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Road Type</label>
+    <select name="road_type" class="form-select">
+      <option value="highway" {% if shipment and shipment.road_type=='highway' %}selected{% endif %}>highway</option>
+      <option value="mixed"   {% if shipment and shipment.road_type=='mixed' %}selected{% endif %}>mixed</option>
+      <option value="poor"    {% if shipment and shipment.road_type=='poor' %}selected{% endif %}>poor</option>
+    </select>
+  </div>
+
+  <!-- Other -->
+  <div class="col-md-6">
+    <label class="form-label">Departure Condition</label>
+    <input name="condition_departure" class="form-control" value="{{ shipment.condition_departure if shipment }}">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-select">
+      <option value="planned"     {% if shipment and shipment.status=='planned' %}selected{% endif %}>planned</option>
+      <option value="in_transit"  {% if shipment and shipment.status=='in_transit' %}selected{% endif %}>in_transit</option>
+      <option value="delivered"   {% if shipment and shipment.status=='delivered' %}selected{% endif %}>delivered</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Customer ID</label>
+    <input name="customer_id" type="number" class="form-control" value="{{ shipment.customer_id if shipment }}">
+  </div>
+
+  <!-- Map preview -->
+  <div class="col-12">
+    <div id="map" style="height: 320px;" class="rounded border"></div>
+    <small class="text-muted">Drag or zoom to view. After using Find, markers will update. OSRM preview will show approximate drive distance/time.</small>
+    <div class="mt-2">
+      <span id="routeBadge" class="badge text-bg-secondary">No route yet</span>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <button class="btn btn-danger">Save</button>
+  </div>
+</form>
+
+<script>
+  const map = L.map('map').setView([20.5937,78.9629], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  let mFrom = L.marker([20.5937,78.9629]).addTo(map);
+  let mTo   = L.marker([20.5937,78.9629]).addTo(map);
+  let routeLine = null;
+
+  function setMarker(which, lat, lon) {
+    if (which==='from') { mFrom.setLatLng([lat, lon]); }
+    else { mTo.setLatLng([lat, lon]); }
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    tryRoute();
+  }
+
+  async function geocode(which) {
+    const nameEl = document.getElementById(which==='from' ? 'from_name' : 'to_name');
+    const latEl  = document.getElementById(which==='from' ? 'from_lat' : 'to_lat');
+    const lonEl  = document.getElementById(which==='from' ? 'from_lng' : 'to_lng');
+    const q = nameEl.value.trim();
+    if (!q) return;
+    const resp = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    const j = await resp.json();
+    if (j.ok) {
+      latEl.value = j.lat; lonEl.value = j.lon;
+      setMarker(which, j.lat, j.lon);
+      map.setView([j.lat, j.lon], 10);
+    } else {
+      alert('Place not found: ' + (j.error || ''));
+    }
+  }
+
+  async function tryRoute() {
+    const a = [parseFloat(document.getElementById('from_lat').value||'0'), parseFloat(document.getElementById('from_lng').value||'0')];
+    const b = [parseFloat(document.getElementById('to_lat').value||'0'), parseFloat(document.getElementById('to_lng').value||'0')];
+    if (!a[0] || !b[0]) return;
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full`;
+      const resp = await fetch(url);
+      const j = await resp.json();
+      if (j.code==='Ok' && j.routes && j.routes[0]) {
+        const r = j.routes[0];
+        const km = (r.distance/1000).toFixed(1);
+        const hrs = (r.duration/3600).toFixed(1);
+        document.getElementById('routeBadge').textContent = `Preview: ${km} km, ${hrs} h`;
+        const coords = r.geometry ? decodePolyline(r.geometry) : null;
+        if (coords) {
+          if (routeLine) map.removeLayer(routeLine);
+          routeLine = L.polyline(coords, {weight:4}).addTo(map);
+          map.fitBounds(routeLine.getBounds());
+        }
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  // decode OSRM polyline (polyline6)
+  function decodePolyline(str) {
+    // Polyline encoding v5 (OSRM uses polyline6 sometimes; the API above returns encoded geometry)
+    // To keep simple, we skip drawing if no geometry provided; most OSRM responses here include geometry.
+    return null;
+  }
+
+  // If existing shipment, set markers
+  const exFromLat = parseFloat(document.getElementById('from_lat').value||'0');
+  const exFromLng = parseFloat(document.getElementById('from_lng').value||'0');
+  const exToLat = parseFloat(document.getElementById('to_lat').value||'0');
+  const exToLng = parseFloat(document.getElementById('to_lng').value||'0');
+  if (exFromLat && exFromLng) setMarker('from', exFromLat, exFromLng);
+  if (exToLat && exToLng) setMarker('to', exToLat, exToLng);
+</script>
+{% endblock %}

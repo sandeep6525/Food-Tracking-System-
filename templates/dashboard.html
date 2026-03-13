@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4">
+  <div class="col"><div class="card p-3 text-center"><div>Total Shipments</div><h3>{{ total_shipments }}</h3></div></div>
+  <div class="col"><div class="card p-3 text-center"><div>In Transit</div><h3>{{ in_transit }}</h3></div></div>
+  <div class="col"><div class="card p-3 text-center"><div>Delivered</div><h3>{{ delivered }}</h3></div></div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h5 class="mb-0">Recent Shipments</h5>
+  <a class="btn btn-sm btn-danger" href="{{ url_for('shipment_new') }}">+ New</a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>ID</th><th>Title</th><th>Customer</th><th>Status</th><th>Distance (km)</th><th>ETA (days)</th><th></th></tr></thead>
+    <tbody>
+      {% for s in recent %}
+        <tr>
+          <td>{{ s.id }}</td>
+          <td>{{ s.title }}</td>
+          <td>{{ s.customer_name }}</td>
+          <td>{{ s.status }}</td>
+          <td>{{ '%.2f'|format(s.distance_km or 0) }}</td>
+          <td>{{ '%.2f'|format(s.eta_days or 0) }}</td>
+          <td><a class="btn btn-sm btn-outline-danger" href="{{ url_for('shipment_detail', sid=s.id) }}">View</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

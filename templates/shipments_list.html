@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h5 class="mb-0">Shipments</h5>
+  <a class="btn btn-sm btn-danger" href="{{ url_for('shipment_new') }}">+ New</a>
+</div>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>ID</th><th>Title</th><th>Customer</th><th>Tomato Type</th><th>Source</th><th>Destination</th><th>Distance (km)</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for s in shipments %}
+        <tr>
+          <td>{{ s.id }}</td>
+          <td>{{ s.title }}</td>
+          <td>{{ s.customer_name }}</td>
+          <td>{{ s.tomato_type }}</td>
+          <td>{{ s.origin }}</td>
+          <td>{{ s.destination }}</td>
+          <td>{{ '%.2f'|format(s.distance_km or 0) }}</td>
+          <td>{{ s.status }}</td>
+          <td>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('shipment_edit', sid=s.id) }}">Edit</a>
+            <a class="btn btn-sm btn-outline-danger" href="{{ url_for('shipment_detail', sid=s.id) }}">View</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
